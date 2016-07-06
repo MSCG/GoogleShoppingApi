@@ -23,6 +23,10 @@ class BlueVisionTec_GoogleShoppingApi_Model_Type extends Mage_Core_Model_Abstrac
      * @var BlueVisionTec_GoogleShoppingApi_Model_Mysql4_Attribute_Collection
      */
     protected $_attributesCollection;
+    /** @var array
+     * Will be filled with models, which cannot be found. If model cannot be found, a fall back to the default one is
+     * introduced. */
+    protected $_cacheInvalidModels = array();
 
     protected function _construct()
     {
@@ -164,10 +168,21 @@ class BlueVisionTec_GoogleShoppingApi_Model_Type extends Mage_Core_Model_Abstrac
     protected function _createAttribute($name)
     {
         $modelName = 'googleshoppingapi/attribute_' . $this->_prepareModelName($name);
+        if(isset($this->_cacheInvalidModels[$modelName])) {
+            //TODO outsource this
+            /** @var BlueVisionTec_GoogleShoppingApi_Model_Attribute_Default $attributeModel */
+            $attributeModel = Mage::getModel('googleshoppingapi/attribute_default');
+            $attributeModel->setName($name);
+
+            return $attributeModel;
+        }
         
         $useDefault = false;
         try {
             $attributeModel = Mage::getModel($modelName);
+            if(FALSE === $attributeModel) {
+                $this->_cacheInvalidModels[$modelName] = true;
+            }
             $useDefault = !$attributeModel;
         } catch (Exception $e) {
             $useDefault = true;
