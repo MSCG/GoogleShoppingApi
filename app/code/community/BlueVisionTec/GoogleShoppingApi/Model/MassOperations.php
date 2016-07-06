@@ -149,38 +149,55 @@ class BlueVisionTec_GoogleShoppingApi_Model_MassOperations
         $itemsCollection = $this->_getItemsCollection($items);
 
         if ($itemsCollection) {
-            if (count($itemsCollection) < 1) {
+            if ($itemsCollection->getSize() < 1) {
                 return $this;
             }
-            foreach ($itemsCollection as $item) {
-                if ($this->_flag && $this->_flag->isExpired()) {
-                    break;
+
+            $itemsCollection->setPageSize(100);
+            $pages = $itemsCollection->getLastPageNumber();
+
+            $currentPage = 1;
+            $batchNumber = 0;
+
+            do {
+
+                $itemsCollection->setCurPage($currentPage);
+            	$itemsCollection->load();
+
+                foreach ($itemsCollection as $item) {
+                    if ($this->_flag && $this->_flag->isExpired()) {
+                        break;
+                    }
+                    $this->_getLogger()->setStoreId($item->getStoreId());
+                    $removeInactive = $this->_getConfig()->getConfigData('autoremove_disabled',$item->getStoreId());
+                    $renewNotListed = $this->_getConfig()->getConfigData('autorenew_notlisted',$item->getStoreId());
+                    try {
+                        if($removeInactive && ($item->getProduct()->getStatus() == Mage_Catalog_Model_Product_Status::STATUS_DISABLED || !$item->getProduct()->getStockItem()->getIsInStock() )) {
+                            $item->deleteItem();
+                            $item->delete();
+                            $totalDeleted++;
+                            //Mage::log("remove inactive: ".$item->getProduct()->getSku()." - ".$item->getProduct()->getName());
+                        } else {
+                            $item->updateItem();
+                            $item->save();
+                            // The item was updated successfully
+                            $totalUpdated++;
+                        }
+                    } catch (Mage_Core_Exception $e) {
+                        $errors[] = Mage::helper('googleshoppingapi')->__('The item "%s" cannot be updated at Google Content. %s', $item->getProduct()->getName(), $e->getMessage());
+                        $totalFailed++;
+                    } catch (Exception $e) {
+                        Mage::logException($e);
+                        $errors[] = Mage::helper('googleshoppingapi')->__('The item "%s" hasn\'t been updated.', $item->getProduct()->getName());
+                        $errors[] = $e->getMessage();
+                        $totalFailed++;
+                    }
                 }
-                $this->_getLogger()->setStoreId($item->getStoreId());
-                $removeInactive = $this->_getConfig()->getConfigData('autoremove_disabled',$item->getStoreId());
-				$renewNotListed = $this->_getConfig()->getConfigData('autorenew_notlisted',$item->getStoreId());
-                try {
-					if($removeInactive && ($item->getProduct()->getStatus() == Mage_Catalog_Model_Product_Status::STATUS_DISABLED || !$item->getProduct()->getStockItem()->getIsInStock() )) {
-						$item->deleteItem();
-						$item->delete();
-						$totalDeleted++;
-						//Mage::log("remove inactive: ".$item->getProduct()->getSku()." - ".$item->getProduct()->getName());
-					} else {
-						$item->updateItem();
-						$item->save();
-						// The item was updated successfully
-						$totalUpdated++;
-					}
-                } catch (Mage_Core_Exception $e) {
-                    $errors[] = Mage::helper('googleshoppingapi')->__('The item "%s" cannot be updated at Google Content. %s', $item->getProduct()->getName(), $e->getMessage());
-                    $totalFailed++;
-                } catch (Exception $e) {
-                    Mage::logException($e);
-                    $errors[] = Mage::helper('googleshoppingapi')->__('The item "%s" hasn\'t been updated.', $item->getProduct()->getName());
-                    $errors[] = $e->getMessage();
-                    $totalFailed++;
-                }
-            }
+
+                $itemsCollection->clear();
+            	$currentPage++;
+
+            } while ($currentPage <= $pages);
         } else {
             return $this;
         }
