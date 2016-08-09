@@ -533,6 +533,7 @@ class BlueVisionTec_GoogleShoppingApi_Model_MassOperations
         if (is_numeric($storeId)) {
             /** @var BlueVisionTec_GoogleShoppingApi_Model_Resource_Item_Collection $itemsCollection */
             $itemsCollection = Mage::getResourceModel('googleshoppingapi/item_collection')
+                ->setOrder('expires', 'ASC')
                 ->addStoreFilter($storeId);
        }
         return $itemsCollection;
