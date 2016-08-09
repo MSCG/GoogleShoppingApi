@@ -39,6 +39,34 @@ class BlueVisionTec_GoogleShoppingApi_Model_MassOperations
     protected $_flag;
 
     /**
+     * @return int|null
+     */
+    public function getBatch()
+    {
+        return $this->_batch;
+    }
+
+    /**
+     * Batch limit.
+     * Default = NULL == No limit
+     * @var int|null
+     */
+    protected $_batch = NULL;
+
+    /**
+     * Breaks function after set batch limit has been reached.
+     * Default = NULL = no limit
+     * @param int|null $batch
+     *
+     * @return BlueVisionTec_GoogleShoppingApi_Model_MassOperations
+     */
+    public function setBatch($batch)
+    {
+        $this->_batch = $batch;
+
+        return $this;
+    }
+    /**
      * Set process locking flag.
      *
      * @param BlueVisionTec_GoogleShoppingApi_Model_Flag $flag
@@ -66,7 +94,12 @@ class BlueVisionTec_GoogleShoppingApi_Model_MassOperations
         $totalAdded = 0;
         $errors = array();
         if ($productCollection->getSize() > 0) {
-            $productCollection->setPageSize(100);
+            if(NULL === $this->getBatch()) {
+                $productCollection->setPageSize(100);
+            } else if(intval($this->getBatch())>0) {
+                $productCollection
+                    ->getSelect()->limit($this->getBatch());
+            }
             $pages = $productCollection->getLastPageNumber();
 
             $currentPage = 1;
@@ -152,8 +185,12 @@ class BlueVisionTec_GoogleShoppingApi_Model_MassOperations
             if ($itemsCollection->getSize() < 1) {
                 return $this;
             }
-
-            $itemsCollection->setPageSize(100);
+            if(NULL === $this->getBatch()) {
+                $itemsCollection->setPageSize(100);
+            } else if(intval($this->getBatch())>0) {
+                $itemsCollection
+                    ->getSelect()->limit($this->getBatch());
+            }
             $pages = $itemsCollection->getLastPageNumber();
 
             $currentPage = 1;

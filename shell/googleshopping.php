@@ -20,6 +20,12 @@ class BlueVisionTec_Shell_GoogleShopping extends Mage_Shell_Abstract
      * @var string
      */
     protected $_action = NULL;
+    /**
+     * Limit per batch
+     * Default: NULL (no limit basically)
+     * @var int|null
+     */
+    protected $_batch = NULL;
 
 
     /**
@@ -46,6 +52,9 @@ class BlueVisionTec_Shell_GoogleShopping extends Mage_Shell_Abstract
         }
         if ($this->getArg('storeid')) {
             $this->_storeId = $this->getArg('storeid');
+        }
+        if($this->getArg('batch')) {
+            $this->_batch = 0 === (int)$this->getArg('batch') ? NULL : (int)$this->getArg('batch');
         }
 
     }
@@ -109,6 +118,7 @@ class BlueVisionTec_Shell_GoogleShopping extends Mage_Shell_Abstract
                 $flag->lock();
                 Mage::getModel('googleshoppingapi/massOperations')
                     ->setFlag($flag)
+                    ->setBatch($this->_batch)
                     ->batchSynchronizeStoreItems($_storeId);
             } catch (Exception $e) {
                 $flag->unlock();
@@ -259,6 +269,7 @@ class BlueVisionTec_Shell_GoogleShopping extends Mage_Shell_Abstract
                 /** @var BlueVisionTec_GoogleShoppingApi_Model_MassOperations $mo */
                 $mo = Mage::getModel('googleshoppingapi/massOperations');
                 $mo->setFlag($flag)
+                    ->setBatch($this->_batch)
                     ->batchAddStoreItems($_storeId);
             } catch (Exception $e) {
                 $flag->unlock();
@@ -291,6 +302,7 @@ Usage:  php -f googleshopping.php -- --action <actionname> [options]
       productids            Comma separated Ids of products or single product id
       store                 Id of Store (default = all)
       categoryid            Id of GoogleShopping category
+      batch                 How many Products shall be synced/added in this call. Default: no limit
   help                  This help
 USAGE;
     }
