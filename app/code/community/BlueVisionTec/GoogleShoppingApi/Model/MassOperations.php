@@ -202,6 +202,7 @@ class BlueVisionTec_GoogleShoppingApi_Model_MassOperations
                 $itemsCollection->setCurPage($currentPage);
             	$itemsCollection->load();
 
+                /** @var BlueVisionTec_GoogleShoppingApi_Model_Item $item */
                 foreach ($itemsCollection as $item) {
                     if ($this->_flag && $this->_flag->isExpired()) {
                         break;
@@ -224,6 +225,21 @@ class BlueVisionTec_GoogleShoppingApi_Model_MassOperations
                     } catch (Mage_Core_Exception $e) {
                         $errors[] = Mage::helper('googleshoppingapi')->__('The item "%s" cannot be updated at Google Content. %s', $item->getProduct()->getName(), $e->getMessage());
                         $totalFailed++;
+                    } catch (Google_Service_Exception $e) {
+                        if ($e->getCode() === 404) {
+                            $item->delete();
+                            $errors[] = Mage::helper('googleshoppingapi')->__(
+                                'The item "%s" was not found on GoogleContent',
+                                $item->getProduct()->getName()
+                            );
+                            $errors[] = $e->getMessage();
+                            $totalDeleted++;
+                        } else {
+                            Mage::logException($e);
+                            $errors[] = Mage::helper('googleshoppingapi')->__('The item "%s" hasn\'t been updated.', $item->getProduct()->getName());
+                            $errors[] = $e->getMessage();
+                            $totalFailed++;
+                        }
                     } catch (Exception $e) {
                         Mage::logException($e);
                         $errors[] = Mage::helper('googleshoppingapi')->__('The item "%s" hasn\'t been updated.', $item->getProduct()->getName());
